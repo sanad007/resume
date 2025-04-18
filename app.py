@@ -1,94 +1,96 @@
+import os
 import streamlit as st
 import PyPDF2
 import google.generativeai as genai
-from PIL import Image
+from dotenv import load_dotenv
 
-# Configure your Gemini API Key
-genai.configure(api_key="AIzaSyBEsKTWs2k-A0Iwjz_Qo6StFnZnYJN-Oec")  # Replace with your key
+# Load environment variables
+load_dotenv()
 
+# Configure Gemini API
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    st.error("❌ Gemini API key not found. Please set GEMINI_API_KEY in your environment.")
+    st.stop()
+
+genai.configure(api_key=api_key)
+
+# Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
-    pdf_reader = PyPDF2.PdfReader(pdf_file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
-    return text
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+        return text
+    except Exception as e:
+        st.error(f"❌ Error extracting text from PDF: {e}")
+        return None
 
+# Function to analyze resume with Gemini
 def analyze_resume_with_gemini(resume_text):
-    prompt = f"""
-    Analyze the following resume text and provide:
-    1. Pros of this resume
-    2. Cons of this resume
-    3. ATS (Applicant Tracking System) score out of 100
-    
-    Resume Text:
-    {resume_text}
-    """
+    try:
+        prompt = f"""
+        You are a career expert and AI assistant.
 
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt)
-    return response.text
+        Analyze this resume and provide:
+        1. Pros of this resume
+        2. Cons of this resume
+        3. ATS (Applicant Tracking System) Score out of 100
 
-# Streamlit App UI
-st.set_page_config(page_title="AI Resume Analyzer", layout="wide", page_icon=":briefcase:")
+        Resume:
+        {resume_text}
+        """
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        st.error(f"❌ Error analyzing resume with Gemini AI: {e}")
+        return "❌ Analysis failed. Please try again later."
 
-st.markdown(
-    """
-    <style>
-    .main {
-        background-color: #F8F9FA;
-    }
-    .title {
-        text-align: center;
-        font-size: 2.8em;
-        font-weight: bold;
-        margin-bottom: 0.2em;
-        color: #004080;
-    }
-    .subtitle {
-        text-align: center;
-        font-size: 1.2em;
-        color: #555;
-        margin-bottom: 2em;
-    }
-    .stApp {
-        padding: 2rem;
-    }
-    </style>
-    """, unsafe_allow_html=True
-)
+# UI setup
+st.set_page_config(page_title="AI Resume Analyzer", layout="centered", page_icon="📄")
 
-st.markdown('<div class="title">AI Resume Analyzer</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Upload your resume (PDF or text) to receive AI-generated pros, cons, and ATS score</div>', unsafe_allow_html=True)
+st.markdown("""
+    <h1 style='text-align: center; color: #004080;'>📄 AI Resume Analyzer</h1>
+    <p style='text-align: center; color: #555;'>Upload your resume to get AI-powered feedback (Pros, Cons & ATS Score)</p>
+""", unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "txt"], label_visibility="visible")
+uploaded_file = st.file_uploader("Upload Resume (PDF or TXT)", type=["pdf", "txt"])
 
 if uploaded_file:
-    st.subheader("Resume Text Preview")
-    
+    # Extract text based on file type
     if uploaded_file.type == "application/pdf":
         resume_text = extract_text_from_pdf(uploaded_file)
     else:
         resume_text = uploaded_file.read().decode("utf-8")
 
-    st.code(resume_text[:3000], language="markdown")  # limit preview to first 3000 chars
+    if resume_text:
+        st.subheader("📄 Resume Preview")
+        st.code(resume_text[:3000])  # Show preview (limit to 3000 characters)
 
-    st.subheader("AI-Powered Evaluation")
-    with st.spinner("Analyzing resume with Gemini AI..."):
-        result = analyze_resume_with_gemini(resume_text)
+        with st.spinner("🤖 Analyzing resume..."):
+            result = analyze_resume_with_gemini(resume_text)
 
-    # Extract sections
-    pros = result.split("2.")[0].replace("1.", "").strip()
-    cons = result.split("2.")[1].split("3.")[0].strip()
-    ats_score = result.split("3.")[1].strip()
+        if "❌ Error" in result:
+            st.error(result)
+        else:
+            # Try parsing based on known format
+            try:
+                pros = result.split("2.")[0].replace("1.", "").strip()
+                cons = result.split("2.")[1].split("3.")[0].strip()
+                ats_score = result.split("3.")[1].strip()
+            except Exception as e:
+                st.error(f"❌ Error parsing results: {e}")
+                pros, cons, ats_score = "Could not parse pros", "Could not parse cons", "N/A"
 
-    st.markdown("### ✅ Pros")
-    st.success(pros)
+            st.markdown("### ✅ Pros")
+            st.success(pros)
 
-    st.markdown("### ❌ Cons")
-    st.warning(cons)
+            st.markdown("### ❌ Cons")
+            st.warning(cons)
 
-    st.markdown("### 📊 ATS Score")
-    st.info(ats_score)
-
+            st.markdown("### 📊 ATS Score")
+            st.info(ats_score)
 else:
-    st.info("Please upload a resume (PDF or text) to start the analysis.")
+    st.info("Please upload a resume (PDF or TXT) to begin.")

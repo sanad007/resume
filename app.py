@@ -36,10 +36,24 @@ def analyze_resume_with_gemini(resume_text):
     Resume Text:
     {resume_text}
     """
-
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt)
-    return response.text
+    
+    try:
+        # Use the correct model for Gemini analysis
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(prompt)
+        return response.text
+    except google.api_core.exceptions.NotFound as e:
+        st.error(f"❌ The requested resource was not found: {e}")
+        return None
+    except google.api_core.exceptions.DeadlineExceeded as e:
+        st.error(f"❌ The request timed out: {e}")
+        return None
+    except google.api_core.exceptions.PermissionDenied as e:
+        st.error(f"❌ Permission denied: {e}")
+        return None
+    except Exception as e:
+        st.error(f"❌ An unexpected error occurred: {e}")
+        return None
 
 # Streamlit App UI
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide", page_icon=":briefcase:")
@@ -89,19 +103,20 @@ if uploaded_file:
     with st.spinner("Analyzing resume with Gemini AI..."):
         result = analyze_resume_with_gemini(resume_text)
 
-    # Extract sections
-    pros = result.split("2.")[0].replace("1.", "").strip()
-    cons = result.split("2.")[1].split("3.")[0].strip()
-    ats_score = result.split("3.")[1].strip()
+    if result:
+        # Extract sections
+        pros = result.split("2.")[0].replace("1.", "").strip()
+        cons = result.split("2.")[1].split("3.")[0].strip()
+        ats_score = result.split("3.")[1].strip()
 
-    st.markdown("### ✅ Pros")
-    st.success(pros)
+        st.markdown("### ✅ Pros")
+        st.success(pros)
 
-    st.markdown("### ❌ Cons")
-    st.warning(cons)
+        st.markdown("### ❌ Cons")
+        st.warning(cons)
 
-    st.markdown("### 📊 ATS Score")
-    st.info(ats_score)
+        st.markdown("### 📊 ATS Score")
+        st.info(ats_score)
 
 else:
     st.info("Please upload a resume (PDF or text) to start the analysis.")

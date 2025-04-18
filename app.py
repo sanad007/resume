@@ -2,24 +2,22 @@ import streamlit as st
 import PyPDF2
 import google.generativeai as genai
 from PIL import Image
-from dotenv import load_dotenv
-import os
-import google.api_core.exceptions  # Import the exceptions module
 
-# Load environment variables from .env file
-load_dotenv()
+# Configure your Gemini API Key
+genai.configure(api_key="YOUR_GEMINI_API_KEY")  # Replace with your actual Gemini API key
 
-# Get Gemini API key from environment
-api_key = os.getenv("GEMINI_API_KEY")
+# Function to list available models in the Gemini API
+def list_available_models():
+    try:
+        # Get available models
+        client = genai.GenerativeModelClient()  # Initialize the client
+        models = client.list_models()  # List available models
+        model_names = [model.name for model in models]
+        st.write("Available Models:", model_names)
+    except Exception as e:
+        st.error(f"Error listing models: {e}")
 
-# Check if API key is available
-if not api_key:
-    st.error("❌ Gemini API key not found. Please set GEMINI_API_KEY in your environment.")
-    st.stop()
-
-# Configure the Gemini API with the provided key
-genai.configure(api_key=api_key)
-
+# Function to extract text from a PDF file
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
     text = ""
@@ -27,6 +25,7 @@ def extract_text_from_pdf(pdf_file):
         text += page.extract_text()
     return text
 
+# Function to analyze resume with the correct Gemini model
 def analyze_resume_with_gemini(resume_text):
     prompt = f"""
     Analyze the following resume text and provide:
@@ -39,8 +38,8 @@ def analyze_resume_with_gemini(resume_text):
     """
     
     try:
-        # Use the correct model for Gemini analysis
-        model = genai.GenerativeModel("gemini-pro")
+        # Use the correct model for Gemini analysis (replace '<correct_model_name>' with the valid model)
+        model = genai.GenerativeModel("<correct_model_name>")  # Replace with valid model name
         response = model.generate_content(prompt)
         return response.text
     except google.api_core.exceptions.NotFound as e:
@@ -100,14 +99,14 @@ if uploaded_file:
 
     st.code(resume_text[:3000], language="markdown")  # limit preview to first 3000 chars
 
-    # Add an Analyze button
-    if st.button("Analyze Resume"):
-        st.subheader("AI-Powered Evaluation")
-        with st.spinner("Analyzing resume with Gemini AI..."):
-            result = analyze_resume_with_gemini(resume_text)
+    st.subheader("AI-Powered Evaluation")
+    
+    with st.spinner("Analyzing resume with Gemini AI..."):
+        result = analyze_resume_with_gemini(resume_text)
 
-        if result:
-            # Extract sections
+    if result:
+        # Extract sections from the result
+        try:
             pros = result.split("2.")[0].replace("1.", "").strip()
             cons = result.split("2.")[1].split("3.")[0].strip()
             ats_score = result.split("3.")[1].strip()
@@ -120,6 +119,11 @@ if uploaded_file:
 
             st.markdown("### 📊 ATS Score")
             st.info(ats_score)
+        except Exception as e:
+            st.error(f"Error parsing the analysis result: {e}")
 
 else:
     st.info("Please upload a resume (PDF or text) to start the analysis.")
+
+# Call the function to list available models if you need to see the available models
+list_available_models()

@@ -4,6 +4,7 @@ import google.generativeai as genai
 from PIL import Image
 from dotenv import load_dotenv
 import os
+import google.api_core.exceptions  # Import the exceptions module
 
 # Load environment variables from .env file
 load_dotenv()
@@ -99,24 +100,26 @@ if uploaded_file:
 
     st.code(resume_text[:3000], language="markdown")  # limit preview to first 3000 chars
 
-    st.subheader("AI-Powered Evaluation")
-    with st.spinner("Analyzing resume with Gemini AI..."):
-        result = analyze_resume_with_gemini(resume_text)
+    # Add an Analyze button
+    if st.button("Analyze Resume"):
+        st.subheader("AI-Powered Evaluation")
+        with st.spinner("Analyzing resume with Gemini AI..."):
+            result = analyze_resume_with_gemini(resume_text)
 
-    if result:
-        # Extract sections
-        pros = result.split("2.")[0].replace("1.", "").strip()
-        cons = result.split("2.")[1].split("3.")[0].strip()
-        ats_score = result.split("3.")[1].strip()
+        if result:
+            # Extract sections
+            pros = result.split("2.")[0].replace("1.", "").strip()
+            cons = result.split("2.")[1].split("3.")[0].strip()
+            ats_score = result.split("3.")[1].strip()
 
-        st.markdown("### ✅ Pros")
-        st.success(pros)
+            st.markdown("### ✅ Pros")
+            st.success(pros)
 
-        st.markdown("### ❌ Cons")
-        st.warning(cons)
+            st.markdown("### ❌ Cons")
+            st.warning(cons)
 
-        st.markdown("### 📊 ATS Score")
-        st.info(ats_score)
+            st.markdown("### 📊 ATS Score")
+            st.info(ats_score)
 
 else:
     st.info("Please upload a resume (PDF or text) to start the analysis.")

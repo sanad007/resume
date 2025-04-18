@@ -89,6 +89,7 @@ st.markdown('<div class="subtitle">Upload your resume (PDF or text) to receive A
 
 uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "txt"], label_visibility="visible")
 
+# Analyze button to trigger the resume evaluation
 if uploaded_file:
     st.subheader("Resume Text Preview")
     
@@ -99,28 +100,32 @@ if uploaded_file:
 
     st.code(resume_text[:3000], language="markdown")  # limit preview to first 3000 chars
 
-    st.subheader("AI-Powered Evaluation")
+    # Show "Analyze" button
+    analyze_button = st.button("Analyze Resume")
     
-    with st.spinner("Analyzing resume with Gemini AI..."):
-        result = analyze_resume_with_gemini(resume_text)
+    if analyze_button:
+        st.subheader("AI-Powered Evaluation")
+        
+        with st.spinner("Analyzing resume with Gemini AI..."):
+            result = analyze_resume_with_gemini(resume_text)
 
-    if result:
-        # Extract sections from the result
-        try:
-            pros = result.split("2.")[0].replace("1.", "").strip()
-            cons = result.split("2.")[1].split("3.")[0].strip()
-            ats_score = result.split("3.")[1].strip()
+        if result:
+            # Extract sections from the result
+            try:
+                pros = result.split("2.")[0].replace("1.", "").strip()
+                cons = result.split("2.")[1].split("3.")[0].strip()
+                ats_score = result.split("3.")[1].strip()
 
-            st.markdown("### ✅ Pros")
-            st.success(pros)
+                st.markdown("### ✅ Pros")
+                st.success(pros)
 
-            st.markdown("### ❌ Cons")
-            st.warning(cons)
+                st.markdown("### ❌ Cons")
+                st.warning(cons)
 
-            st.markdown("### 📊 ATS Score")
-            st.info(ats_score)
-        except Exception as e:
-            st.error(f"Error parsing the analysis result: {e}")
+                st.markdown("### 📊 ATS Score")
+                st.info(ats_score)
+            except Exception as e:
+                st.error(f"Error parsing the analysis result: {e}")
 
 else:
     st.info("Please upload a resume (PDF or text) to start the analysis.")
